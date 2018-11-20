@@ -1,0 +1,22 @@
+{
+  "input-file": "samples_short.xyz",
+  "nn": {
+    "output-file": "nn.asc",
+    "cellsize": 1.0
+  },
+  "idw": {
+    "output-file": "idw.asc",
+    "cellsize": 1.0,
+    "radius": 15,
+    "power": 2
+  },
+  "tin": {
+    "output-file": "tin.asc",
+    "cellsize": 1.0
+  },
+  "kriging": {
+    "output-file": "kriging.asc",
+    "cellsize": 1.0,
+    "radius": 15
+  }
+}
