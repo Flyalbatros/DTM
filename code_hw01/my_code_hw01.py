@@ -44,6 +44,15 @@ def nn_interpolation(list_pts_3d, j_nn):
 
 
 def idw_interpolation(list_pts_3d, j_idw):
+    print("=== IDW interpolation ===")
+    #index the data
+    kd = scipy.spatial.KDTree([i[0:2] for i in list_pts_3d])
+    d, i = kd.query([i[0:2] for i in list_pts_3d], k=1)
+    #compute raster
+    min, max = compute_bbox([i[0:2] for i in list_pts_3d])
+    raster_pts = compute_raster(min, max, j_nn['cellsize'])
+    #calculate the idw values for each raster
+    
     """
     !!! TO BE COMPLETED !!!
      
@@ -55,8 +64,7 @@ def idw_interpolation(list_pts_3d, j_idw):
     Output:
         returns the value of the area
  
-    """  
-    print("=== IDW interpolation ===")
+    """
 
     # print("cellsize:", j_idw['cellsize'])
     # print("radius:", j_idw['radius'])
