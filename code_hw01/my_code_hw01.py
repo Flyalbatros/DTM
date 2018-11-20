@@ -12,11 +12,11 @@ import numpy
 
 
 def nn_interpolation(list_pts_3d, j_nn):
-    max, min = compute_bbox([i[0:2] for i in list_pts_3d])
-    raster_pts = computer_raster(max, min, j_nn['cellsize'])
+    min, max = compute_bbox([i[0:2] for i in list_pts_3d])
+    raster_pts = compute_raster(min, max, j_nn['cellsize'])
     kd = scipy.spatial.KDTree([i[0:2] for i in list_pts_3d])
     d,i = kd.query([i[0:2] for i in list_pts_3d], k=1)
-    print(i)
+    print(raster_pts)
     """
     !!! TO BE COMPLETED !!!
      
@@ -118,6 +118,13 @@ def compute_bbox(list_pts):
     min_y = min([i[1:2] for i in list_pts])
     max_x = max([i[0:1] for i in list_pts])
     max_y = max([i[1:2] for i in list_pts])
-    return (min_x,min_y),(max_x, max_y)
+    print((min_x[0],min_y[0]),(max_x[0], max_y[0]))
+    return (min_x[0],min_y[0]),(max_x[0], max_y[0])
 
-def raster_size
+def compute_raster(min, max, cellsize):
+    out_points = []
+    for line in range(int(max[1])+int(cellsize), int(min[1]), -int(cellsize)):
+        for cell in range(int(min[0]), int(max[0])+int(cellsize), int(cellsize)):
+            #print(cell,line)
+            out_points.append((cell, line))
+    return out_points
