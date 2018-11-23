@@ -16,7 +16,7 @@ def nn_interpolation(list_pts_3d, j_nn):
     raster_pts = compute_raster(min, max, j_nn['cellsize'])
     kd = scipy.spatial.KDTree([i[0:2] for i in list_pts_3d])
     d,i = kd.query([i[0:2] for i in list_pts_3d], k=1)
-    print(raster_pts)
+    print ("distances",i)
     """
     !!! TO BE COMPLETED !!!
      
@@ -47,12 +47,14 @@ def idw_interpolation(list_pts_3d, j_idw):
     print("=== IDW interpolation ===")
     #index the data
     kd = scipy.spatial.KDTree([i[0:2] for i in list_pts_3d])
-    d, i = kd.query([i[0:2] for i in list_pts_3d], k=1)
     #compute raster
     min, max = compute_bbox([i[0:2] for i in list_pts_3d])
-    raster_pts = compute_raster(min, max, j_nn['cellsize'])
-    #calculate the idw values for each raster
-    
+    raster_pts = compute_raster(min, max, j_idw['cellsize'])
+    #calculate the idw values for each raster point
+    print("radius:", j_idw['radius'])
+    i = kd.query_ball_point(raster_pts, j_idw['radius'])
+    print(len(raster_pts), len(i))
+    print(i[100])
     """
     !!! TO BE COMPLETED !!!
      
@@ -126,12 +128,12 @@ def compute_bbox(list_pts):
     min_y = min([i[1:2] for i in list_pts])
     max_x = max([i[0:1] for i in list_pts])
     max_y = max([i[1:2] for i in list_pts])
-    print((min_x[0],min_y[0]),(max_x[0], max_y[0]))
     return (min_x[0],min_y[0]),(max_x[0], max_y[0])
 
 def compute_raster(min, max, cellsize):
     out_points = []
-    for line in range(int(max[1])+int(cellsize), int(min[1]), -int(cellsize)):
+    y_axis = range(int(min[1]), int(max[1])+int(cellsize), +int(cellsize))
+    for line in reversed(y_axis):
         for cell in range(int(min[0]), int(max[0])+int(cellsize), int(cellsize)):
             #print(cell,line)
             out_points.append((cell, line))
