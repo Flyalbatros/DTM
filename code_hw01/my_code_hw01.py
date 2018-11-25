@@ -16,7 +16,7 @@ def nn_interpolation(list_pts_3d, j_nn):
     raster_pts = compute_raster(min, max, j_nn['cellsize'])
     kd = scipy.spatial.KDTree([i[0:2] for i in list_pts_3d])
     d,i = kd.query([i[0:2] for i in list_pts_3d], k=1)
-    print ("distances",i)
+    #print ("distances",i)
     """
     !!! TO BE COMPLETED !!!
      
@@ -49,12 +49,41 @@ def idw_interpolation(list_pts_3d, j_idw):
     kd = scipy.spatial.KDTree([i[0:2] for i in list_pts_3d])
     #compute raster
     min, max = compute_bbox([i[0:2] for i in list_pts_3d])
-    raster_pts = compute_raster(min, max, j_idw['cellsize'])
+    raster_pts, line_length = compute_raster(min, max, j_idw['cellsize'])
     #calculate the idw values for each raster point
     print("radius:", j_idw['radius'])
     i = kd.query_ball_point(raster_pts, j_idw['radius'])
-    print(len(raster_pts), len(i))
-    print(i[100])
+    #print(len(raster_pts), len(i))
+    power = j_idw['power']
+    counter = 0
+    out_matrix = []
+    outline = []
+    for idx in range(0,len(raster_pts)):
+        interpolation = 0
+        weight_sum = 0
+        for point_idx in i[idx]:
+            raster_pt_x = raster_pts[idx][0]
+            raster_pt_y = raster_pts[idx][1]
+            interp_pt_x = list_pts_3d[point_idx][0]
+            interp_pt_y = list_pts_3d[point_idx][1]
+            distance = (((raster_pt_x-interp_pt_x)**2+(raster_pt_y-interp_pt_y)**2)**0.5)
+            if distance == 0:
+                interpolation = list_pts_3d[point_idx][2]
+                weight_sum = 1
+                break
+            weight = distance**-power
+            interpolation += list_pts_3d[point_idx][2]*weight
+            weight_sum += weight
+        interpolation = interpolation/weight_sum
+        outline.append(interpolation)
+        counter +=1
+        if counter == line_length:
+            counter = 0
+            out_matrix.append(outline)
+            outline = []
+    print(out_matrix)
+
+
     """
     !!! TO BE COMPLETED !!!
      
@@ -133,8 +162,9 @@ def compute_bbox(list_pts):
 def compute_raster(min, max, cellsize):
     out_points = []
     y_axis = range(int(min[1]), int(max[1])+int(cellsize), +int(cellsize))
+    x_axis = range(int(min[0]), int(max[0])+int(cellsize), int(cellsize))
     for line in reversed(y_axis):
-        for cell in range(int(min[0]), int(max[0])+int(cellsize), int(cellsize)):
+        for cell in x_axis:
             #print(cell,line)
             out_points.append((cell, line))
-    return out_points
+    return out_points, len(x_axis)
