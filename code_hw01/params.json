@@ -1,14 +1,14 @@
 {
-  "input-file": "samples_short.xyz",
-  "nn": {
-    "output-file": "nn.asc",
-    "cellsize": 1.0
-  },
+  "input-file": "other-samples\\switzerland\\samples.xyz",
   "idw": {
     "output-file": "idw.asc",
-    "cellsize": 1.0,
-    "radius": 15,
+    "cellsize": 200.0,
+    "radius": 100,
     "power": 2
+  },
+  "nn": {
+    "output-file": "nn.asc",
+    "cellsize": 200.0
   },
   "tin": {
     "output-file": "tin.asc",
