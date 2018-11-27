@@ -69,7 +69,7 @@ def idw_interpolation(list_pts_3d, j_idw):
     for idx in range(0, len(raster_pts)):
         interpolation = 0
         weight_sum = 0
-        if i[idx] == []:
+        if len(i[idx]) == 0:
             break
         for point_idx in i[idx]:
             raster_pt_x = raster_pts[idx][0]
@@ -84,7 +84,7 @@ def idw_interpolation(list_pts_3d, j_idw):
             weight = distance ** -power
             interpolation += list_pts_3d[point_idx][2] * weight
             weight_sum += weight
-            print(interpolation, weight_sum)
+            #print(interpolation, weight_sum)
         interpolation = interpolation / weight_sum
         out_matrix[line_counter][column_counter]=interpolation
         column_counter += 1
@@ -154,7 +154,7 @@ def compute_rcpt(min, max, cellsize):
     ncols = math.ceil((max_x - min_x) / cellsize)  # x
     nrows = math.ceil((max_y - min_y) / cellsize)  # y
     rcpt = []
-    for y_row in range(0, nrows):
+    for y_row in reversed(range(0, nrows)):
         y_coor = min_y + (y_row + 0.5) * cellsize
         for x_col in range(0, ncols):
             x_coor = min_x + (x_col + 0.5) * cellsize

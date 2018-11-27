@@ -1,14 +1,14 @@
 {
   "input-file": "other-samples\\switzerland\\samples.xyz",
-  "idw": {
-    "output-file": "idw.asc",
-    "cellsize": 200.0,
-    "radius": 100,
-    "power": 2
-  },
   "nn": {
     "output-file": "nn.asc",
-    "cellsize": 200.0
+    "cellsize": 100.0
+  },
+  "idw": {
+    "output-file": "idw.asc",
+    "cellsize": 400.0,
+    "radius": 5000,
+    "power": 2
   },
   "tin": {
     "output-file": "tin.asc",
