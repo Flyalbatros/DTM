@@ -1,13 +1,13 @@
 {
-  "input-file": "other-samples\\tasmania\\samples.xyz",
+  "input-file": "samples.xyz",
   "nn": {
     "output-file": "nn.asc",
-    "cellsize": 100.0
+    "cellsize": 1
   },
   "idw": {
     "output-file": "idw.asc",
-    "cellsize": 100.0,
-    "radius": 400,
+    "cellsize": 1,
+    "radius": 15,
     "power": 2
   },
   "tin": {

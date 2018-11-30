@@ -34,6 +34,8 @@ def main():
             assert(len(p) == 3)
             list_pts_3d.append(p)
     #-- interpolations if in the params
+    print(jparams['input-file'])
+    
     if 'nn' in jparams:
         my_code_hw01.nn_interpolation(list_pts_3d, jparams['nn'])
     if 'idw' in jparams:
@@ -42,7 +44,7 @@ def main():
         my_code_hw01.tin_interpolation(list_pts_3d, jparams['tin'])
     if 'kriging' in jparams:
         my_code_hw01.kriging_interpolation(list_pts_3d, jparams['kriging'])
-
+    
 if __name__ == '__main__':
     main()
 
