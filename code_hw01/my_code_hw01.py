@@ -35,14 +35,14 @@ def nn_interpolation(list_pts_3d, j_nn):
     # print("len(rcpt)",len(rcpt))
     # print("len(ii)",len(ii))
 
-    ind_rcpt = 0
+    column_counter = 0
+    line_counter = 0
     for ind in ii:
-        z = list_pts_3d[ind][2]
-        # print ("z",z)
-        i_row = math.floor((rcpt[ind_rcpt][1] - yll) / cellsize)
-        j_col = math.floor((rcpt[ind_rcpt][0] - xll) / cellsize)
-        rasterdata[i_row][j_col] = z
-        ind_rcpt += 1
+        rasterdata[line_counter][column_counter] = list_pts_3d[ind][2]
+        column_counter += 1
+        if column_counter == ncols:
+            column_counter = 0
+            line_counter += 1
 
     fname = j_nn['output-file']
     writeASC(fname, ncols, nrows, xll, yll, cellsize, rasterdata)
@@ -90,7 +90,6 @@ def idw_interpolation(list_pts_3d, j_idw):
         column_counter += 1
         if column_counter == ncols:
             column_counter = 0
-            outline = []
             line_counter +=1
     fname = j_idw['output-file']
     writeASC(fname, ncols, nrows, min[0], min[1], j_idw['cellsize'], out_matrix)
@@ -133,6 +132,8 @@ def kriging_interpolation(list_pts_3d, j_kriging):
     """
     print("=== Ordinary kriging interpolation ===")
 
+
+
     print("File written to", j_kriging['output-file'])
 
 
@@ -174,3 +175,19 @@ def writeASC(fname, ncols, nrows, xll, yll, cellsize, rasterdata):
     np.savetxt(f, rasterdata, fmt='%.1f', delimiter=' ')
     f.close()
     print("writeASC done")
+
+def gaussian(distance, sill, range, nugget):
+    return sill*(1-np.exp(((-3*distance)^2)/(range^2)))+nugget
+
+def clean_points(points_list):
+    clean_points_list = []
+    for point1 in points_list:
+        repeated = False
+        for point2 in clean_points_list:
+            if point1[0] == point2[0] and point1[1] == point2[1]:
+                repeated = True
+        if repeated == False:
+            clean_points_list.append(point1)
+        else:
+            print("Repeated point: " + str(point1[0]) + " " + str(point1[1]))
+    return np.array(clean_points_list)
