@@ -102,42 +102,33 @@ def tin_interpolation(list_pts_3d, j_tin):
 
     # -- example to construct the DT
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Delaunay.html#scipy.spatial.Delaunay
-
-    dt = scipy.spatial.Delaunay([])
+    # dt = scipy.spatial.Delaunay([])
 
     print("File written to", j_tin['output-file'])
 
 
 def kriging_interpolation(list_pts_3d, j_kriging):
     print("=== Ordinary kriging interpolation ===")
-    #clean the data
     list_pts_3d=clean_points(list_pts_3d)
     cellsize = j_kriging['cellsize']
-    #generate raster
     min, max = compute_bbox([i[0:2] for i in list_pts_3d])
     xll = min[0]
     yll = min[1]
     (ncols, nrows, rcpt) = compute_rcpt(min, max, cellsize)
     r = j_kriging['radius']
-    #prepare output
     rasterdata = np.ones((nrows, ncols))
     rasterdata = rasterdata * (-9999.0)
-    #kd-tree indexing
     kd_tree = scipy.spatial.KDTree([i[0:2] for i in list_pts_3d])
     cpt_ind = 0
-    #for each centerpoint
     for cpt in rcpt:
         neighbours = kd_tree.query_ball_point([cpt], r)
         if len(neighbours) == 0:
-            #if no neighbours
             break
         else:
-            #build the a and d matrix
             A = np.ones((len(neighbours)+1, len(neighbours)+1))
             A[len(neighbours)][len(neighbours)] = 0
             d = np.ones((len(neighbours)+1, 1))
             for pt_ind1 in range(0,len(neighbours)):
-                #traverse the list of neighbors
                 x0 = cpt[0]
                 y0 = cpt[1]
                 '''
@@ -149,23 +140,19 @@ def kriging_interpolation(list_pts_3d, j_kriging):
                 y1 = list_pts_3d[neighbours[0][pt_ind1]][1]
                 distance = math.sqrt((x1-x0)**2+(y1-y0)**2)
                 gamma_d = gaussian(distance)
-                #write the distance to neighbor to d matrix
                 d[pt_ind1] = gamma_d
-                for pt_ind2 in range(0,len(neighbours)):
-                    #for all pairs of neighboring points, calculate distance and use function to store in A matrix
+                for pt_ind2 in range(0,len(neighbours)):                  
                     x2 = list_pts_3d[neighbours[0][pt_ind2]][0]
                     y2 = list_pts_3d[neighbours[0][pt_ind2]][1]
                     distance = math.sqrt((x1-x2)**2+(y1-y2)**2)
                     gamma = gaussian(distance)
                     A[pt_ind1][pt_ind2]=gamma
                     A[pt_ind2][pt_ind1]=gamma
-            #calculate weight by inverting matrix and scalar product
+            
             w = np.dot(inv(A),d)
-            #calculate the value of the point using the weights
             z = 0
             for i in range(0,len(neighbours)):
                 z+=w[i]*list_pts_3d[neighbours[0][i]][2]
-            #store the result
             i_row = int(cpt_ind/ncols)
             j_col = cpt_ind%ncols
             rasterdata[i_row][j_col] = z
