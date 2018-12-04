@@ -45,6 +45,8 @@ def idw_interpolation(list_pts_3d, j_idw):
     # compute raster
     min, max = compute_bbox([i[0:2] for i in list_pts_3d])
     (ncols, nrows, raster_pts) = compute_rcpt(min, max, j_idw['cellsize'])
+    #make the delaunay triangulation
+    dt = scipy.spatial.Delaunay([i[0:2] for i in list_pts_3d])
     # calculate the idw values for each raster point
     #print("radius:", j_idw['radius'])
     #print(raster_pts)
@@ -57,27 +59,27 @@ def idw_interpolation(list_pts_3d, j_idw):
     out_matrix = out_matrix * (-9999.0)
     outline = []
     for idx in range(0, len(raster_pts)):
+        triangle_idx = dt.find_simplex(raster_pts[idx])
         interpolation = 0
         weight_sum = 0
-        if i[idx] == []:
-            break
-        for point_idx in i[idx]:
-            raster_pt_x = raster_pts[idx][0]
-            raster_pt_y = raster_pts[idx][1]
-            interp_pt_x = list_pts_3d[point_idx][0]
-            interp_pt_y = list_pts_3d[point_idx][1]
-            distance = (((raster_pt_x - interp_pt_x) ** 2 + (raster_pt_y - interp_pt_y) ** 2) ** 0.5)
-            if distance == 0:
-                interpolation = list_pts_3d[point_idx][2]
-                weight_sum = 1
-                break
-            weight = distance ** -power
-            interpolation += list_pts_3d[point_idx][2] * weight
-            weight_sum += weight
-            #print(interpolation, weight_sum)
-        interpolation = interpolation / weight_sum
-        out_matrix[line_counter][column_counter]=interpolation
-        column_counter += 1
+        if len(i[idx])>0 and triangle_idx!=-1:
+            for point_idx in i[idx]:
+                raster_pt_x = raster_pts[idx][0]
+                raster_pt_y = raster_pts[idx][1]
+                interp_pt_x = list_pts_3d[point_idx][0]
+                interp_pt_y = list_pts_3d[point_idx][1]
+                distance = (((raster_pt_x - interp_pt_x) ** 2 + (raster_pt_y - interp_pt_y) ** 2) ** 0.5)
+                if distance == 0:
+                    interpolation = list_pts_3d[point_idx][2]
+                    weight_sum = 1
+                    continue
+                weight = distance ** -power
+                interpolation += list_pts_3d[point_idx][2] * weight
+                weight_sum += weight
+                #print(interpolation, weight_sum)
+            interpolation = interpolation / weight_sum
+            out_matrix[line_counter][column_counter]=interpolation
+            column_counter += 1
         if column_counter == ncols:
             column_counter = 0
             outline = []
@@ -87,31 +89,56 @@ def idw_interpolation(list_pts_3d, j_idw):
     print("File written to", j_idw['output-file'])
 
 def tin_interpolation(list_pts_3d, j_tin):
+    """
+    !!! TO BE COMPLETED !!!
+
+    Function that writes the output raster with linear in TIN interpolation
+
+    Input:
+        list_pts_3d: the list of the input points (in 3D)
+        j_tin:       the parameters of the input for "tin"
+    Output:
+        returns the value of the area
+
+    """
     print("=== TIN interpolation ===")
-    #clean the data
-    list_pts_3d=clean_points(list_pts_3d)
 
-    cellsize = j_tin['cellsize']
-    #generate raster
-    min, max = compute_bbox([i[0:2] for i in list_pts_3d])
-    xll = min[0]
-    yll = min[1]
-    (ncols, nrows, rcpt) = compute_rcpt(min, max, cellsize)
-    dt = scipy.spatial.Delaunay(list_pts_3d)
-    #prepare output
-    rasterdata = np.ones((nrows, ncols))
-    rasterdata = rasterdata * (-9999.0)
-
-    for cpt in rcpt:
-        find_simplex()
-
-
+    # -- example to construct the DT
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Delaunay.html#scipy.spatial.Delaunay
-
-    dt = scipy.spatial.Delaunay([])
-
+    #make the delaunay triangulation
+    dt = scipy.spatial.Delaunay([i[0:2] for i in list_pts_3d])
+    #compute the raster
+    min, max = compute_bbox([i[0:2] for i in list_pts_3d])
+    (ncols, nrows, raster_cpts) = compute_rcpt(min, max, j_tin['cellsize'])
+    #prepare the output
+    out_matrix = np.ones((nrows, ncols))
+    out_matrix = out_matrix * (-9999.0)
+    column_counter = 0
+    line_counter = 0
+    #go through the raster points
+    #print(raster_cpts)
+    for rcpt in raster_cpts:
+        #print(dt.find_simplex(rcpt))
+        triangle_idx = dt.find_simplex(rcpt)
+        #print(triangle_idx)
+        if triangle_idx != -1:
+            tri_vertices = dt.simplices[triangle_idx]
+            vertex_1 = list_pts_3d[tri_vertices[0]]
+            vertex_2 = list_pts_3d[tri_vertices[1]]
+            vertex_3 = list_pts_3d[tri_vertices[2]]
+            p = np.array([rcpt]) #put the point into a numpy array
+            b = dt.transform[triangle_idx, :2].dot(np.transpose(p - dt.transform[triangle_idx, 2])) #calculate barycentric coordinates 1/2
+            weights = np.c_[np.transpose(b), 1 - b.sum(axis=0)][0] #calculate barycentric coordinates 2/2
+            interpolation = vertex_1[2]*weights[0]+vertex_2[2]*weights[1]+vertex_3[2]*weights[2]
+            #print(interpolation, vertex_1[2], vertex_2[2], vertex_3[2])
+            out_matrix[line_counter][column_counter] = interpolation
+        column_counter += 1
+        if column_counter == ncols:
+            column_counter = 0
+            line_counter += 1
+    fname = j_tin['output-file']
+    writeASC(fname, ncols, nrows, min[0], min[1], j_tin['cellsize'], out_matrix)
     print("File written to", j_tin['output-file'])
-
 
 def kriging_interpolation(list_pts_3d, j_kriging):
     print("=== Ordinary kriging interpolation ===")
