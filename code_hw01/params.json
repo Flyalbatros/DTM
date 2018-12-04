@@ -6,7 +6,7 @@
   },
   "idw": {
     "output-file": "idw.asc",
-    "cellsize": 1,
+    "cellsize": 5,
     "radius": 15,
     "power": 2
   },

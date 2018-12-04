@@ -15,6 +15,9 @@ def nn_interpolation(list_pts_3d, j_nn):
     print("=== Nearest neighbour interpolation ===")
     cellsize = j_nn['cellsize']
 
+    #make the delaunay triangulation
+    dt = scipy.spatial.Delaunay([i[0:2] for i in list_pts_3d])
+
     min, max = compute_bbox([i[0:2] for i in list_pts_3d])
     xll = min[0]
     yll = min[1]
@@ -28,10 +31,12 @@ def nn_interpolation(list_pts_3d, j_nn):
 
     ind_rcpt = 0
     for ind in ii:
-        z = list_pts_3d[ind][2]
-        i_row = int(ind_rcpt/ncols)
-        j_col = ind_rcpt%ncols
-        rasterdata[i_row][j_col] = z
+        triangle_idx = dt.find_simplex(rcpt[ind_rcpt])  # convex hull check
+        if triangle_idx != -1: # convex hull check
+            z = list_pts_3d[ind][2]
+            i_row = int(ind_rcpt/ncols)
+            j_col = ind_rcpt%ncols
+            rasterdata[i_row][j_col] = z
         ind_rcpt += 1
 
     fname = j_nn['output-file']
@@ -59,7 +64,7 @@ def idw_interpolation(list_pts_3d, j_idw):
     out_matrix = out_matrix * (-9999.0)
     outline = []
     for idx in range(0, len(raster_pts)):
-        triangle_idx = dt.find_simplex(raster_pts[idx])
+        triangle_idx = dt.find_simplex(raster_pts[idx]) #convex hull check
         interpolation = 0
         weight_sum = 0
         if len(i[idx])>0 and triangle_idx!=-1:
@@ -69,20 +74,19 @@ def idw_interpolation(list_pts_3d, j_idw):
                 interp_pt_x = list_pts_3d[point_idx][0]
                 interp_pt_y = list_pts_3d[point_idx][1]
                 distance = (((raster_pt_x - interp_pt_x) ** 2 + (raster_pt_y - interp_pt_y) ** 2) ** 0.5)
-                if distance == 0:
+                if distance == 0 or len(i[idx]) == 1:
                     interpolation = list_pts_3d[point_idx][2]
                     weight_sum = 1
-                    continue
+                    break
                 weight = distance ** -power
                 interpolation += list_pts_3d[point_idx][2] * weight
                 weight_sum += weight
                 #print(interpolation, weight_sum)
             interpolation = interpolation / weight_sum
             out_matrix[line_counter][column_counter]=interpolation
-            column_counter += 1
+        column_counter += 1
         if column_counter == ncols:
             column_counter = 0
-            outline = []
             line_counter +=1
     fname = j_idw['output-file']
     writeASC(fname, ncols, nrows, min[0], min[1], j_idw['cellsize'], out_matrix)
@@ -102,7 +106,6 @@ def tin_interpolation(list_pts_3d, j_tin):
 
     """
     print("=== TIN interpolation ===")
-
     # -- example to construct the DT
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.Delaunay.html#scipy.spatial.Delaunay
     #make the delaunay triangulation
@@ -150,6 +153,8 @@ def kriging_interpolation(list_pts_3d, j_kriging):
     xll = min[0]
     yll = min[1]
     (ncols, nrows, rcpt) = compute_rcpt(min, max, cellsize)
+    #make the delaunay triangulation
+    dt = scipy.spatial.Delaunay([i[0:2] for i in list_pts_3d])
     #prepare output
     rasterdata = np.ones((nrows, ncols))
     rasterdata = rasterdata * (-9999.0)
@@ -163,7 +168,8 @@ def kriging_interpolation(list_pts_3d, j_kriging):
         neighbours = kd_tree.query_ball_point(cpt, r) 
         #print("cpt",cpt)
         #print("len(neighbours)",len(neighbours),"neighbours",neighbours)
-        if len(neighbours)>0:
+        triangle_idx = dt.find_simplex(cpt)
+        if len(neighbours)>0 and triangle_idx !=-1:
             #build the a and d matrix
             A = np.ones((len(neighbours)+1, len(neighbours)+1))
             A[len(neighbours)][len(neighbours)] = 0
@@ -179,7 +185,6 @@ def kriging_interpolation(list_pts_3d, j_kriging):
                 gamma_d = gaussian(distance)
                 #write the distance to neighbor to d matrix
                 d[pt_ind1] = gamma_d
-
                 for pt_ind2 in range(pt_ind1,len(neighbours)):
                     #for all pairs of neighboring points
                     # calculate distance and use function to store in A matrix
