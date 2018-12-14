@@ -32,19 +32,19 @@ def read_pts_from_grid(jparams):
     PixelSizeX = input_data.transform[0]
     PixelSizeY = -input_data.transform[4]
     #transform_matrix = input_data.transform
-    np.zeros(shape)
     #print(raw_data[0])
     #lower_left_corner = transform_matrix * (0,input_data.height)
-    outlist = []
-    row_cnt = 0
-    for rev_row in reversed(range(0,nrows)):
-        for col in range(0,ncols):
-            z=raw_data[0][row_cnt][col]
-            if z!=nodata_value:
-                outlist.append([(rev_row+0.5)*PixelSizeY, (col+0.5)*PixelSizeX, z])
-        row_cnt+=1
-    print("Finished reading points from grid")
-    return np.array(outlist)
+    # outlist = []
+    # row_cnt = 0
+    # for rev_row in reversed(range(0,nrows)):
+    #     for col in range(0,ncols):
+    #         z=raw_data[0][row_cnt][col]
+    #         if z!=nodata_value:
+    #             outlist.append([(rev_row+0.5)*PixelSizeY, (col+0.5)*PixelSizeX, z])
+    #     row_cnt+=1
+    # print(len(raw_data[0][1]))
+    # print(len(np.array(generate_raster_points(nrows, ncols, raw_data, nodata_value, PixelSizeX, PixelSizeY))))
+    return np.array(generate_raster_points(nrows, ncols, raw_data, nodata_value, PixelSizeX, PixelSizeY))
     # Tip: the most efficient implementation of this function does not use any loops. Use numpy functions instead.
 
 
@@ -85,14 +85,7 @@ def simplify_by_refinement(pts, jparams):
                 error_track = 1
                 break
             else: #calculate the difference between the existing TIN and the actual z value of the point
-                tri_vertices = dt_2d.simplices[triangle_idx]
-                vertex_1 = dt_vertices[tri_vertices[0]]
-                vertex_2 = dt_vertices[tri_vertices[1]]
-                vertex_3 = dt_vertices[tri_vertices[2]]
-                p = np.array([point[0:2]]) #put the point into a numpy array
-                b = dt_2d.transform[triangle_idx, :2].dot(np.transpose(p - dt_2d.transform[triangle_idx, 2])) #calculate barycentric coordinates 1/2
-                weights = np.c_[np.transpose(b), 1 - b.sum(axis=0)][0] #calculate barycentric coordinates 2/2
-                interpolation = vertex_1[2]*weights[0]+vertex_2[2]*weights[1]+vertex_3[2]*weights[2]
+                interpolation = TIN_interpolator(dt_vertices, dt_2d, triangle_idx,  point)
                 diff_list.append(abs(point[2]-interpolation))
         #update values and triangulation
         highest_diff = max(diff_list)
@@ -101,8 +94,10 @@ def simplify_by_refinement(pts, jparams):
         dt_2d = scipy.spatial.Delaunay([i[0:2] for i in dt_vertices])
     #print("%.32f" %highest_diff)
     #print(max(diff_list), min(diff_list))
-    return dt_vertices[4:len(dt_vertices)] # Remember: the vertices of the initial TIN should not be returned
-
+    if len(dt_vertices)>4:
+        return dt_vertices[4:len(dt_vertices)] # Remember: the vertices of the initial TIN should not be returned
+    else:
+        return None
 
 
 def compute_differences(pts_important, jparams):
@@ -118,4 +113,71 @@ def compute_differences(pts_important, jparams):
             output-file-differences:    string that specifies where to write the output grid file with the differences
     """
     print("=== Computing differences ===")
-    
+    input_data = rasterio.open(jparams["input-file"])
+    out_profile = input_data.profile
+    raw_data = input_data.read()
+    PixelSizeX = input_data.transform[0]
+    PixelSizeY = -input_data.transform[4]
+    ###
+    nodata_value = input_data.nodata
+    ncols = input_data.width
+    nrows = input_data.height
+    shape = input_data.shape
+    ###
+    raster_pts = np.array(generate_raster_points(nrows, ncols, raw_data, nodata_value, PixelSizeX, PixelSizeY,0))
+    ### generate the simplified TIN
+    dt_2d = scipy.spatial.Delaunay([i[0:2] for i in pts_important])
+    ###now let's compare them
+    outlist = []
+    linelist = []
+    print(ncols,nrows)
+    print(shape)
+    print(len(raster_pts))
+    print(len(raw_data[0][1]))
+    col_counter = 0
+    row_counter = 0
+    for point in raster_pts:
+        if point[2] == nodata_value:
+            linelist.append(nodata_value)
+        else:
+            triangle_idx = dt_2d.find_simplex(point[0:2])
+            if triangle_idx == -1:
+                print("!!! ERROR: point outside convex hull of simplified dataset !!!")
+                linelist.append(nodata_value)
+            else:
+                interpolation = TIN_interpolator(pts_important, dt_2d, triangle_idx, point)
+                linelist.append(point[2] - interpolation)
+        #index counters
+        col_counter +=1
+        if col_counter == ncols:
+            col_counter = 0
+            outlist.append(linelist)
+            linelist = []
+    #print(diff_raster)
+    #let's write the output file reusing the settings of the input file
+    outputter = rasterio.open(jparams["output-file-differences"], 'w', **out_profile)
+    outputter.write(np.array([outlist]).astype(rasterio.int16))
+
+def TIN_interpolator(dt_vertices, dt_2d, triangle_idx,  point):
+    tri_vertices = dt_2d.simplices[triangle_idx]
+    vertex_1 = dt_vertices[tri_vertices[0]]
+    vertex_2 = dt_vertices[tri_vertices[1]]
+    vertex_3 = dt_vertices[tri_vertices[2]]
+    p = np.array([point[0:2]])  # put the point into a numpy array
+    b = dt_2d.transform[triangle_idx, :2].dot(np.transpose(p - dt_2d.transform[triangle_idx, 2]))  # calculate barycentric coordinates 1/2
+    weights = np.c_[np.transpose(b), 1 - b.sum(axis=0)][0]  # calculate barycentric coordinates 2/2
+    return vertex_1[2] * weights[0] + vertex_2[2] * weights[1] + vertex_3[2] * weights[2]
+
+def generate_raster_points(nrows, ncols, raw_data, nodata_value, PixelSizeX, PixelSizeY, nodata_filter=1):
+    outlist = []
+    row_cnt = 0
+    for rev_row in reversed(range(0, nrows)):
+        for col in range(0, ncols):
+            z = raw_data[0][row_cnt][col]
+            if z != nodata_value and nodata_filter==1:
+                outlist.append([(rev_row + 0.5) * PixelSizeY, (col + 0.5) * PixelSizeX, z])
+            if nodata_filter==0:
+                outlist.append([(rev_row + 0.5) * PixelSizeY, (col + 0.5) * PixelSizeX, z])
+        row_cnt += 1
+    #print(row_cnt)
+    return outlist
