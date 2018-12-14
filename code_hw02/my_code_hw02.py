@@ -41,7 +41,7 @@ def read_pts_from_grid(jparams):
         for col in range(0,ncols):
             z=raw_data[0][row_cnt][col]
             if z!=nodata_value:
-                outlist.append([rev_row*PixelSizeY, col*PixelSizeX, z])
+                outlist.append([(rev_row+0.5)*PixelSizeY, (col+0.5)*PixelSizeX, z])
         row_cnt+=1
     print("Finished reading points from grid")
     return np.array(outlist)
@@ -65,8 +65,43 @@ def simplify_by_refinement(pts, jparams):
         a numpy array that is a subset of pts and contains the most important points with respect to the error-threshold
     """
     print("=== TIN simplification ===")
-
-    # Remember: the vertices of the initial TIN should not be returned
+    y_max = max(pts[:,1])
+    x_max = max(pts[:,0])
+    y_min = min(pts[:,1])
+    x_min = min(pts[:,0])
+    z_avg = sum(pts[:,2])/len(pts[:,2])
+    dt_vertices = np.array([[x_min,y_min,z_avg], [x_max, y_min,z_avg], [x_max, y_max,z_avg], [x_min, y_max,z_avg]])
+    #print(dt_vertices)
+    dt_2d = scipy.spatial.Delaunay([i[0:2] for i in dt_vertices])
+    error_track = 0
+    highest_diff = np.inf
+    while highest_diff>jparams["error-threshold"] and error_track==0:
+        diff_list = []
+        for point in pts:
+            triangle_idx = dt_2d.find_simplex(point[0:2])
+            #print(triangle_idx)
+            if triangle_idx == -1:
+                print("!!! error creating the bounding box !!!")
+                error_track = 1
+                break
+            else: #calculate the difference between the existing TIN and the actual z value of the point
+                tri_vertices = dt_2d.simplices[triangle_idx]
+                vertex_1 = dt_vertices[tri_vertices[0]]
+                vertex_2 = dt_vertices[tri_vertices[1]]
+                vertex_3 = dt_vertices[tri_vertices[2]]
+                p = np.array([point[0:2]]) #put the point into a numpy array
+                b = dt_2d.transform[triangle_idx, :2].dot(np.transpose(p - dt_2d.transform[triangle_idx, 2])) #calculate barycentric coordinates 1/2
+                weights = np.c_[np.transpose(b), 1 - b.sum(axis=0)][0] #calculate barycentric coordinates 2/2
+                interpolation = vertex_1[2]*weights[0]+vertex_2[2]*weights[1]+vertex_3[2]*weights[2]
+                diff_list.append(abs(point[2]-interpolation))
+        #update values and triangulation
+        highest_diff = max(diff_list)
+        max_idx = diff_list.index(max(diff_list))
+        dt_vertices = np.append(dt_vertices,[pts[max_idx]], axis=0)
+        dt_2d = scipy.spatial.Delaunay([i[0:2] for i in dt_vertices])
+    #print("%.32f" %highest_diff)
+    #print(max(diff_list), min(diff_list))
+    return dt_vertices[4:len(dt_vertices)] # Remember: the vertices of the initial TIN should not be returned
 
 
 
