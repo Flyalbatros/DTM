@@ -28,14 +28,23 @@ def read_pts_from_grid(jparams):
     raw_data = input_data.read()
     ncols = input_data.width
     nrows = input_data.height
-    transform_matrix = input_data.transform
-    print(transform_matrix)
-    lower_left_corner = transform_matrix * (0,input_data.height)
-    for row in range(0,nrows):
+    shape = input_data.shape
+    PixelSizeX = input_data.transform[0]
+    PixelSizeY = -input_data.transform[4]
+    #transform_matrix = input_data.transform
+    np.zeros(shape)
+    #print(raw_data[0])
+    #lower_left_corner = transform_matrix * (0,input_data.height)
+    outlist = []
+    row_cnt = 0
+    for rev_row in reversed(range(0,nrows)):
         for col in range(0,ncols):
-            print(transform_matrix * (row,col),
-            z=raw_data[0][row][col])
-            pass
+            z=raw_data[0][row_cnt][col]
+            if z!=nodata_value:
+                outlist.append([rev_row*PixelSizeY, col*PixelSizeX, z])
+        row_cnt+=1
+    print("Finished reading points from grid")
+    return np.array(outlist)
     # Tip: the most efficient implementation of this function does not use any loops. Use numpy functions instead.
 
 
