@@ -23,7 +23,19 @@ def read_pts_from_grid(jparams):
         a numpy array where each row is one (x,y,z) point. Each pixel from the grid gives one point (except for no-data pixels, these should be skipped).
     """
     print("=== Reading points from grid ===")
-
+    input_data = rasterio.open(jparams["input-file"])
+    nodata_value = input_data.nodata
+    raw_data = input_data.read()
+    ncols = input_data.width
+    nrows = input_data.height
+    transform_matrix = input_data.transform
+    print(transform_matrix)
+    lower_left_corner = transform_matrix * (0,input_data.height)
+    for row in range(0,nrows):
+        for col in range(0,ncols):
+            print(transform_matrix * (row,col),
+            z=raw_data[0][row][col])
+            pass
     # Tip: the most efficient implementation of this function does not use any loops. Use numpy functions instead.
 
 
