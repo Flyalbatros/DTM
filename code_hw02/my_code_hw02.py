@@ -1,10 +1,9 @@
 #-- my_code_hw02.py
 #-- hw02 GEO1015/2018
-#-- [YOUR NAME]
-#-- [YOUR STUDENT NUMBER] 
-#-- [YOUR NAME]
-#-- [YOUR STUDENT NUMBER] 
-
+#-- Qu Wang
+#-- 4700686
+#-- Pablo Ruben
+#-- 4273818
 
 import scipy.spatial
 import numpy as np
@@ -84,7 +83,8 @@ def simplify_by_refinement(pts, jparams):
     highest_diff = np.inf
     while highest_diff>jparams["error-threshold"] and error_track==0:
         diff_list = []
-        for point in pts:
+        for pt_index in range(0,len(pts)):
+            point = pts[pt_index]
             triangle_idx = dt_2d.find_simplex(point[0:2])
             #print(triangle_idx)
             if triangle_idx == -1:
@@ -100,6 +100,7 @@ def simplify_by_refinement(pts, jparams):
             max_idx = diff_list.index(max(diff_list))
             dt_vertices = np.append(dt_vertices,[pts[max_idx]], axis=0)
             dt_2d = scipy.spatial.Delaunay([i[0:2] for i in dt_vertices])
+            np.delete(pts,pt_index)
     #print("%.32f" %highest_diff)
     #print(max(diff_list), min(diff_list))
     if len(dt_vertices)>4:

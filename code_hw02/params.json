@@ -1,6 +1,6 @@
 {
     "input-file": "el_capitan.tif",
-    "error-threshold": 25.0,
-    "output-file-tin": "tin_25m.obj",
-    "output-file-differences": "diff_25m.tif"
+    "error-threshold": 10.0,
+    "output-file-tin": "tin_10m.obj",
+    "output-file-differences": "diff_10m.tif"
 }
