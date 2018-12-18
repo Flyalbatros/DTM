@@ -96,9 +96,10 @@ def simplify_by_refinement(pts, jparams):
                 diff_list.append(abs(point[2]-interpolation))
         #update values and triangulation
         highest_diff = max(diff_list)
-        max_idx = diff_list.index(max(diff_list))
-        dt_vertices = np.append(dt_vertices,[pts[max_idx]], axis=0)
-        dt_2d = scipy.spatial.Delaunay([i[0:2] for i in dt_vertices])
+        if highest_diff>jparams["error-threshold"]:
+            max_idx = diff_list.index(max(diff_list))
+            dt_vertices = np.append(dt_vertices,[pts[max_idx]], axis=0)
+            dt_2d = scipy.spatial.Delaunay([i[0:2] for i in dt_vertices])
     #print("%.32f" %highest_diff)
     #print(max(diff_list), min(diff_list))
     if len(dt_vertices)>4:
