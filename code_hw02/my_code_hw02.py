@@ -65,10 +65,17 @@ def simplify_by_refinement(pts, jparams):
         a numpy array that is a subset of pts and contains the most important points with respect to the error-threshold
     """
     print("=== TIN simplification ===")
+    bbox_size = 3 #variable for bounding box size
     y_max = max(pts[:,1])
     x_max = max(pts[:,0])
     y_min = min(pts[:,1])
     x_min = min(pts[:,0])
+    y_delta = y_max-y_min
+    x_delta = x_max-x_min
+    y_max += y_delta*0.5*(bbox_size-1)
+    y_min -= y_delta*0.5*(bbox_size-1)
+    x_max += x_delta*0.5*(bbox_size-1)
+    x_min -= x_delta*0.5*(bbox_size-1)
     z_avg = sum(pts[:,2])/len(pts[:,2])
     dt_vertices = np.array([[x_min,y_min,z_avg], [x_max, y_min,z_avg], [x_max, y_max,z_avg], [x_min, y_max,z_avg]])
     #print(dt_vertices)
@@ -115,6 +122,7 @@ def compute_differences(pts_important, jparams):
     print("=== Computing differences ===")
     input_data = rasterio.open(jparams["input-file"])
     out_profile = input_data.profile
+    out_profile['dtype'] = 'float32'
     raw_data = input_data.read()
     PixelSizeX = input_data.transform[0]
     PixelSizeY = -input_data.transform[4]
@@ -130,10 +138,10 @@ def compute_differences(pts_important, jparams):
     ###now let's compare them
     outlist = []
     linelist = []
-    print(ncols,nrows)
-    print(shape)
-    print(len(raster_pts))
-    print(len(raw_data[0][1]))
+    # print(ncols,nrows)
+    # print(shape)
+    # print(len(raster_pts))
+    # print(len(raw_data[0][1]))
     col_counter = 0
     row_counter = 0
     for point in raster_pts:
@@ -142,7 +150,7 @@ def compute_differences(pts_important, jparams):
         else:
             triangle_idx = dt_2d.find_simplex(point[0:2])
             if triangle_idx == -1:
-                print("!!! ERROR: point outside convex hull of simplified dataset !!!")
+                print("!!! WARNING: point outside convex hull of simplified dataset !!!")
                 linelist.append(nodata_value)
             else:
                 interpolation = TIN_interpolator(pts_important, dt_2d, triangle_idx, point)
@@ -156,7 +164,7 @@ def compute_differences(pts_important, jparams):
     #print(diff_raster)
     #let's write the output file reusing the settings of the input file
     outputter = rasterio.open(jparams["output-file-differences"], 'w', **out_profile)
-    outputter.write(np.array([outlist]).astype(rasterio.int16))
+    outputter.write(np.array([outlist]).astype(rasterio.float32))
 
 def TIN_interpolator(dt_vertices, dt_2d, triangle_idx,  point):
     tri_vertices = dt_2d.simplices[triangle_idx]
@@ -175,9 +183,9 @@ def generate_raster_points(nrows, ncols, raw_data, nodata_value, PixelSizeX, Pix
         for col in range(0, ncols):
             z = raw_data[0][row_cnt][col]
             if z != nodata_value and nodata_filter==1:
-                outlist.append([(rev_row + 0.5) * PixelSizeY, (col + 0.5) * PixelSizeX, z])
+                outlist.append([(col + 0.5) * PixelSizeX, (rev_row + 0.5) * PixelSizeY, z])
             if nodata_filter==0:
-                outlist.append([(rev_row + 0.5) * PixelSizeY, (col + 0.5) * PixelSizeX, z])
+                outlist.append([(col + 0.5) * PixelSizeX, (rev_row + 0.5) * PixelSizeY, z])
         row_cnt += 1
     #print(row_cnt)
     return outlist
