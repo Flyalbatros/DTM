@@ -1,0 +1,40 @@
+<Mapple state file version 263>
+
+<color>
+	 foreground: 180 180 180
+	 background: 255 255 255
+</color>
+
+<display>
+	 cameraIsEdited: 0
+	 gridIsDrawn: 0
+	 axisIsDrawn: 0
+	 FPSIsDisplayed: 0
+</display>
+
+<windowState>
+	 state: 2
+</windowState>
+
+<camera>
+	 type: PERSPECTIVE
+	 zClippingCoefficient: 1.73205
+	 zNearCoefficient: 0.005
+	 sceneRadius: 1443.6
+	 orthoCoefficient: 2.61802e-10
+	 fieldOfView: 0.785398
+	 sceneCenter: 955.98 935.62 1796
+	 position: 1581.06 -2476.25 3278.76
+	 orientation: 0.548946 0.0461182 0.081144 0.830631
+	 wheelSens: 1
+	 rotSens: 1
+	 zoomSens: 1
+	 spinSens: 100
+	 transSens: 1
+	 zoomsOnPivotPoint: 1
+	 pivotPoint: 955.98 935.62 1796
+	 rotatesAroundUpVector: 0
+	 flySpeed: 14.436
+	 sceneUpVector: 0 1 0
+</camera>
+

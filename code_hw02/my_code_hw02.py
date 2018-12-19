@@ -8,6 +8,8 @@
 import scipy.spatial
 import numpy as np
 import rasterio
+import time
+
 
 
 def read_pts_from_grid(jparams):
@@ -64,7 +66,9 @@ def simplify_by_refinement(pts, jparams):
         a numpy array that is a subset of pts and contains the most important points with respect to the error-threshold
     """
     print("=== TIN simplification ===")
-    bbox_size = 3 #variable for bounding box size
+    start = time.time()
+    print("start measuring time of refinement")
+    bbox_size = 1 #variable for bounding box size
     y_max = max(pts[:,1])
     x_max = max(pts[:,0])
     y_min = min(pts[:,1])
@@ -103,7 +107,10 @@ def simplify_by_refinement(pts, jparams):
             np.delete(pts,pt_index)
     #print("%.32f" %highest_diff)
     #print(max(diff_list), min(diff_list))
+    end = time.time()
+    print("refinement takes ",end - start)
     if len(dt_vertices)>4:
+        #print("There are ",len(dt_vertices)-4,"important points")
         return dt_vertices[4:len(dt_vertices)] # Remember: the vertices of the initial TIN should not be returned
     else:
         return None
@@ -122,6 +129,8 @@ def compute_differences(pts_important, jparams):
             output-file-differences:    string that specifies where to write the output grid file with the differences
     """
     print("=== Computing differences ===")
+    start = time.time()
+    print("start measuring time of compute_differences")
     input_data = rasterio.open(jparams["input-file"])
     out_profile = input_data.profile
     out_profile['dtype'] = 'float32'
@@ -167,6 +176,10 @@ def compute_differences(pts_important, jparams):
     #let's write the output file reusing the settings of the input file
     outputter = rasterio.open(jparams["output-file-differences"], 'w', **out_profile)
     outputter.write(np.array([outlist]).astype(rasterio.float32))
+    
+    end = time.time()
+    print("compute_differences takes ",end - start)
+
 
 def TIN_interpolator(dt_vertices, dt_2d, triangle_idx,  point):
     tri_vertices = dt_2d.simplices[triangle_idx]
