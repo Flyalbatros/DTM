@@ -1,0 +1,15 @@
+{
+  "input_file": "data/tasmania/dem_01.tif",
+  "output_file": "out-tasmania.tif",
+  "maxdistance": 2000,
+  "viewpoints": [
+    {
+      "xy": [515709.0, 5263774.0],
+      "height": 2
+    },
+    {
+      "xy": [515900.0, 5263500.0],
+      "height": 2
+    }    
+  ]
+}

@@ -13,6 +13,8 @@ from numpy.linalg import inv
 
 def nn_interpolation(list_pts_3d, j_nn):
     print("=== Nearest neighbour interpolation ===")
+
+    print(list_pts_3d[0:10])
     cellsize = j_nn['cellsize']
 
     #make the delaunay triangulation

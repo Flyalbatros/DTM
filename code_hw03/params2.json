@@ -1,0 +1,11 @@
+{
+  "input_file": "data/CristoRedentor/cristoredentor.tif",
+  "output_file": "out-cristo.tif",
+  "maxdistance": 5000,
+  "viewpoints": [
+    {
+      "xy": [6105471.0, 7420248.0],
+      "height": 38
+    }
+  ]
+}
