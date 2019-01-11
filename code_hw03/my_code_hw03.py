@@ -86,20 +86,29 @@ def output_viewshed(d, viewpoints, maxdistance, output_file):
     npvs[vrow , vcol] = 2
     
     #creat r bounding box
-    y = list(range(y_ind_min,y_ind_max+1))*2
-    x = [x_ind_max]*(maxPixels_y*2)+[x_ind_min]*(maxPixels_y*2)
-    x += list(range(x_ind_min+1,x_ind_max+1))*2
-    y += [y_ind_max]*(maxPixels_x*2)+[y_ind_min]*(maxPixels_x*2)
+    y = list(range(y_ind_min,y_ind_max+1))*2 #make sure to include the max in the range...
+    x = [x_ind_max]*(maxPixels_y*2+1)+[x_ind_min]*(maxPixels_y*2+1)
+    x += list(range(x_ind_min,x_ind_max+1))*2
+    y += [y_ind_max]*(maxPixels_x*2+1)+[y_ind_min]*(maxPixels_x*2+1)
+    print(list(zip(x,y)))
     rBox = list(zip(x,y))[1:]
     #print(rBox)
     #[(400, 261), (400, 262), (400, 263),......]
-
-
-    getOrderedIndList(d, 0, 0, (5,4))
-    
-    for item in rBox[0:1]:
-        #print(item)
-        getOrderedIndList(d, vrow, vcol, item)
+    #340, 320
+    #print(vrow,vcol)
+    #print(Bresenham_with_rasterio(d, (vrow,vcol), (350,300)))
+    sq_maxdistance = maxdistance**2
+    for index in range(0,len(rBox)):
+          #calculate squared distance
+          dist_pt = rBox[index]
+          print(dist_pt)
+          sq_dist = ((dist_pt[0]-vrow)*PixelSizeY)**2+((dist_pt[1]-vcol)*PixelSizeX)**2
+          if sq_dist>sq_maxdistance:
+              ratio=(sq_maxdistance)**0.5/(sq_dist)**0.5
+              print(ratio)
+              rBox[index] = (math.ceil(vrow+(dist_pt[0]-vrow)*ratio), math.ceil(vcol+(dist_pt[1]-vcol)*ratio))
+          npvs[rBox[index][0],rBox[index][1]] = 2
+    #     getOrderedIndList(d, vrow, vcol, item)
         
 
     #for i in range(x_ind_min,x_ind_max):
@@ -124,43 +133,39 @@ def output_viewshed(d, viewpoints, maxdistance, output_file):
 
     print("Viewshed file written to '%s'" % output_file)
 
-def getOrderedIndList(d, vrow, vcol, endcell):
-    # d = rasterio dataset as above
-    #a = (10, 10)
-    #b = (100, 50)
-
+def Bresenham_with_rasterio(raster, start, end):
+    d = raster
+    a = start #format is (row,col)
+    b = end #format is (row, col)
     #-- create in-memory a simple GeoJSON LineString
     v = {}
     v["type"] = "LineString"
     v["coordinates"] = []
-    v["coordinates"].append(d.xy(vcol,vrow))
-    v["coordinates"].append(d.xy(endcell[0], endcell[1]))
+    v["coordinates"].append(d.xy(a[0], a[1]))
+    v["coordinates"].append(d.xy(b[0], b[1]))
     shapes = [(v, 1)]
-    re = features.rasterize(shapes, 
-                            out_shape=d.shape, 
-                            # all_touched=True,
+    re = features.rasterize(shapes,
+                            out_shape=d.shape,
+                            all_touched=True,
                             transform=d.transform)
+    out = numpy.argwhere(re==1)
+    outlist = []
+    for el in out:
+        outlist.append(tuple(el))
+    #depending on the orientation of the line, sort cells in right order
+    #if a[0]<b[0] and a[1]<b[1]:
+        #outlist = sorted(outlist, key=lambda x: (x[0], x[1]))
+    if a[0]>b[0] and a[1]<=b[1]:
+        outlist = sorted(outlist, key=lambda x: (-x[0], x[1]))
+        print('a')
+    elif a[0]>b[0] and a[1]>=b[1]:
+        outlist = sorted(outlist, key=lambda x: (-x[0], -x[1]))
+        print('b')
+    elif a[0]<=b[0] and a[1]>b[1]:
+        outlist = sorted(outlist, key=lambda x: (x[0], -x[1]))
+    return outlist
+    #print(out[numpy.lexsort((out[:,1],out[:,1]))])
     # re is a numpy with d.shape where the line is rasterised (values != 0)
-    '''
-    [[0 0 0 ... 0 0 0]
-     [0 0 0 ... 0 0 0]
-     [0 0 0 ... 0 0 0]
-     ...
-     [0 0 0 ... 0 0 0]
-     [0 0 0 ... 0 0 0]
-     [0 0 0 ... 0 0 0]]
-    '''
-    ansList = numpy.argwhere(re == 1)
-    print(ansList)
-    ansList.tolist()
-    print(type(ansList),type(ansList[0]),type(ansList[0][1]))
-    #<class 'numpy.ndarray'> <class 'numpy.ndarray'> <class 'numpy.int64'>
-    '''
-    if  endcell[1]>vrow :
-        return reversed(ansList)
-    else:
-        return ansList
-    '''
 
 
 
