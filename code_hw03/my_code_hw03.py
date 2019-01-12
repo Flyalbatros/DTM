@@ -97,6 +97,7 @@ def output_viewshed(d, viewpoints, maxdistance, output_file):
     #340, 320
     #print(vrow,vcol)
     #print(Bresenham_with_rasterio(d, (vrow,vcol), (350,300)))
+    #lets shorten the rays by transforming the square into a circle
     sq_maxdistance = maxdistance**2
     for index in range(0,len(rBox)):
           #calculate squared distance
@@ -106,9 +107,14 @@ def output_viewshed(d, viewpoints, maxdistance, output_file):
           if sq_dist>sq_maxdistance:
               ratio=(sq_maxdistance)**0.5/(sq_dist)**0.5
               print(ratio)
-              rBox[index] = (math.ceil(vrow+(dist_pt[0]-vrow)*ratio), math.ceil(vcol+(dist_pt[1]-vcol)*ratio))
-          npvs[rBox[index][0],rBox[index][1]] = 2
+              new_coords = (math.ceil(vrow+(dist_pt[0]-vrow)*ratio), math.ceil(vcol+(dist_pt[1]-vcol)*ratio))
+              if new_coords in rBox == False:
+                rBox[index] = new_coords
+          #npvs[rBox[index][0],rBox[index][1]] = 2
     #     getOrderedIndList(d, vrow, vcol, item)
+    #finally use bresenheim to get the paths of the rays
+    for bound_pt in rBox:
+        path = Bresenham_with_rasterio(d, (vrow, vcol), bound_pt)
         
 
     #for i in range(x_ind_min,x_ind_max):
