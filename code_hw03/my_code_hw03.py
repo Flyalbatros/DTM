@@ -90,7 +90,7 @@ def output_viewshed(d, viewpoints, maxdistance, output_file):
     x = [x_ind_max]*(maxPixels_y*2+1)+[x_ind_min]*(maxPixels_y*2+1)
     x += list(range(x_ind_min,x_ind_max+1))*2
     y += [y_ind_max]*(maxPixels_x*2+1)+[y_ind_min]*(maxPixels_x*2+1)
-    print(list(zip(x,y)))
+    #print(list(zip(x,y)))
     rBox = list(zip(x,y))[1:]
     #print(rBox)
     #[(400, 261), (400, 262), (400, 263),......]
@@ -102,24 +102,37 @@ def output_viewshed(d, viewpoints, maxdistance, output_file):
     for index in range(0,len(rBox)):
           #calculate squared distance
           dist_pt = rBox[index]
-          print(dist_pt)
+          #print(dist_pt)
           sq_dist = ((dist_pt[0]-vrow)*PixelSizeY)**2+((dist_pt[1]-vcol)*PixelSizeX)**2
           if sq_dist>sq_maxdistance:
               ratio=(sq_maxdistance)**0.5/(sq_dist)**0.5
-              print(ratio)
+              #print(ratio)
               new_coords = (math.ceil(vrow+(dist_pt[0]-vrow)*ratio), math.ceil(vcol+(dist_pt[1]-vcol)*ratio))
               if new_coords in rBox == False:
                 rBox[index] = new_coords
           #npvs[rBox[index][0],rBox[index][1]] = 2
     #     getOrderedIndList(d, vrow, vcol, item)
     #finally use bresenheim to get the paths of the rays
-    for bound_pt in rBox:
+    h_vp = npi[(vrow, vcol)]
+    for bound_pt in rBox[0:2]:
         path = Bresenham_with_rasterio(d, (vrow, vcol), bound_pt)
-        
+        dis_bound_pt = math.sqrt(((bound_pt[0]-vrow)*PixelSizeY)**2+((bound_pt[1]-vcol)*PixelSizeX)**2)
+        #[(i,j),(i,j),(i,j)]
+        current_ang = -999
+        print("test calCosAng")
+        print(calCosAng((0, 0),(0,4),(1,math.sqrt(3))))
 
-    #for i in range(x_ind_min,x_ind_max):
-    #    for j in range(y_ind_min,y_ind_max):
-    #        central = 
+
+        for el in path[1:3]:#strat from 1
+            
+
+            dis_el = math.sqrt(((el[0]-vrow)*PixelSizeY)**2+((el[1]-vcol)*PixelSizeX)**2)
+            proj_dis = calCosAng((vrow, vcol),bound_pt,el)*dis_el
+            #print(proj_dis)
+
+
+            
+        
 
 
 
@@ -163,15 +176,38 @@ def Bresenham_with_rasterio(raster, start, end):
         #outlist = sorted(outlist, key=lambda x: (x[0], x[1]))
     if a[0]>b[0] and a[1]<=b[1]:
         outlist = sorted(outlist, key=lambda x: (-x[0], x[1]))
-        print('a')
+        #print('a')
     elif a[0]>b[0] and a[1]>=b[1]:
         outlist = sorted(outlist, key=lambda x: (-x[0], -x[1]))
-        print('b')
+        #print('b')
     elif a[0]<=b[0] and a[1]>b[1]:
         outlist = sorted(outlist, key=lambda x: (x[0], -x[1]))
     return outlist
     #print(out[numpy.lexsort((out[:,1],out[:,1]))])
     # re is a numpy with d.shape where the line is rasterised (values != 0)
 
+
+
+def calCosAng(strat,end,current_pt):
+    #x=np.array([3,5])
+	#y=np.array([4,2])
+	v1 = numpy.array([end[1]-strat[1],end[0]-strat[0]])
+    
+	v2 = numpy.array([current_pt[1]-strat[1],current_pt[1]-strat[1]])
+    #print(v2)
+	Lv1 = numpy.sqrt(v1.dot(v1))
+	Lv2 = numpy.sqrt(v2.dot(v2))
+	#相当于勾股定理，求得斜线的长度
+	#cos_angle=x.dot(y)/(Lx*Ly)
+	cos_angle = v1.dot(v2)/(Lv1*Lv2)
+	#求得cos_sita的值再反过来计算，绝对长度乘以cos角度为矢量长度，初中知识。。
+	#print(cos_angle)
+	angle_rad = numpy.arccos(cos_angle)
+	angle_deg = angle_rad*360/2/numpy.pi	#变为角度
+	#print(angle2)
+	#x.dot(y) =  y=∑(ai*bi
+    print("some")
+
+	return angle_deg 
 
 
