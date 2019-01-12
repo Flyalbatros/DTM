@@ -28,116 +28,81 @@ def output_viewshed(d, viewpoints, maxdistance, output_file):
     Output:
         none (but output GeoTIFF file written to 'output-file')
     """  
-    #d --- <open DatasetReader name='data/tasmania/dem_01.tif' mode='r'>
-    #viewpoints --- [(515709.0, 5263774.0, 2), (515900.0, 5263500.0, 2)]
-    #maxdistance --- 2000
-    
-    # [this code can and should be removed/modified/reutilised]
-    # [it's just there to help you]
-
     #-- numpy of input
     npi  = d.read(1)
-    #print("npi",npi)
-    '''
-    [[750. 751. 750. ...  61.  62.  62.]
-    [749. 751. 753. ...  60.  61.  61.]
-    [748. 751. 754. ...  60.  60.  61.]
-    ...
-    [230. 236. 240. ...  11.  12.  12.]
-    [234. 241. 247. ...  11.  13.  13.]
-    [242. 248. 255. ...  12.  13.  14.]]
-    '''
-
+    # get the pixel sizes
     PixelSizeX = d.transform[0]
     PixelSizeY = -d.transform[4]
-    (nrow,ncol) = d.shape
-    #print(PixelSizeX,PixelSizeY,shape)
-    #33.365177999999986 33.36517799999934 (505, 550)
-    
+    # translate the range into pixels
     maxPixels_x =  math.ceil(maxdistance/PixelSizeX)
     maxPixels_y = math.ceil(maxdistance/PixelSizeY)
-
-
-
-    #-- fetch the 1st viewpoint
-    v = viewpoints[0]
-    #print(v)  (515709.0, 5263774.0, 2)
-    #-- index of this point in the numpy raster
-    vrow, vcol = d.index(v[0], v[1])
-    #print(vrow,vcol)   340 320
-
-    x_ind_min = vrow - maxPixels_x
-    x_ind_max = vrow + maxPixels_x
-    y_ind_min = vcol - maxPixels_y
-    y_ind_max = vcol + maxPixels_y
-    
-    v1 = (x_ind_max, y_ind_max)
-    v2 = (x_ind_max, y_ind_min)
-    v3 = (x_ind_min, y_ind_min)
-    v4 = (x_ind_min, y_ind_max)
-    #print(v1,v2,v3,v4)
-    #(400, 380) (400, 260) (280, 260) (280, 380)
-
-    #-- the results of the viewshed in npvs, all values=0
-    npvs = numpy.ones(d.shape, dtype=numpy.int8)*(3)
-    ######################################################## check ! there is no 3 inside the R
-    #print(npvs)
-    #-- put that pixel with value 2
-    npvs[vrow , vcol] = 2
-    
-    #creat r bounding box
-    y = list(range(y_ind_min,y_ind_max+1))*2 #make sure to include the max in the range...
-    x = [x_ind_max]*(maxPixels_y*2+1)+[x_ind_min]*(maxPixels_y*2+1)
-    x += list(range(x_ind_min,x_ind_max+1))*2
-    y += [y_ind_max]*(maxPixels_x*2+1)+[y_ind_min]*(maxPixels_x*2+1)
-    #print(list(zip(x,y)))
-    rBox = list(zip(x,y))[1:]
-    #print(rBox)
-    #[(400, 261), (400, 262), (400, 263),......]
-    #340, 320
-    #print(vrow,vcol)
-    #print(Bresenham_with_rasterio(d, (vrow,vcol), (350,300)))
-    #lets shorten the rays by transforming the square into a circle
-    sq_maxdistance = maxdistance**2
-    for index in range(0,len(rBox)):
-          #calculate squared distance
-          dist_pt = rBox[index]
-          #print(dist_pt)
-          sq_dist = ((dist_pt[0]-vrow)*PixelSizeY)**2+((dist_pt[1]-vcol)*PixelSizeX)**2
-          if sq_dist>sq_maxdistance:
-              ratio=(sq_maxdistance)**0.5/(sq_dist)**0.5
-              #print(ratio)
-              new_coords = (math.ceil(vrow+(dist_pt[0]-vrow)*ratio), math.ceil(vcol+(dist_pt[1]-vcol)*ratio))
-              if new_coords in rBox == False:
-                rBox[index] = new_coords
-          #npvs[rBox[index][0],rBox[index][1]] = 2
-    #     getOrderedIndList(d, vrow, vcol, item)
-    #finally use bresenheim to get the paths of the rays
-    h_vp = npi[(vrow, vcol)]
-    for bound_pt in rBox[0:2]:
-        path = Bresenham_with_rasterio(d, (vrow, vcol), bound_pt)
-        dis_bound_pt = math.sqrt(((bound_pt[0]-vrow)*PixelSizeY)**2+((bound_pt[1]-vcol)*PixelSizeX)**2)
-        #[(i,j),(i,j),(i,j)]
-        current_ang = -999
-        print("test calCosAng")
-        print(calCosAng((0, 0),(0,4),(1,math.sqrt(3))))
-
-
-        for el in path[1:3]:#strat from 1
-            
-
-            dis_el = math.sqrt(((el[0]-vrow)*PixelSizeY)**2+((el[1]-vcol)*PixelSizeX)**2)
-            proj_dis = calCosAng((vrow, vcol),bound_pt,el)*dis_el
-            #print(proj_dis)
-
-
-            
-        
-
-
-
-
-
+    #write 3 (outside view range, default value) on the entire output dataset
+    npvs = numpy.ones(d.shape, dtype=numpy.int8) * (3)
+    #for each viewpoint...
+    for v in viewpoints:
+        #determine the position in the raster and register it (value 2 in output raster)
+        vrow, vcol = d.index(v[0], v[1])
+        npvs[vrow, vcol] = 2
+        #and the absolute altitude of the viewpoint...
+        alt_vp = npi[(vrow, vcol)] + v[2]
+        #determine the boundaries of the box circumscribed to which the circle is circumscribed
+        x_ind_min = vrow - maxPixels_x
+        x_ind_max = vrow + maxPixels_x
+        y_ind_min = vcol - maxPixels_y
+        y_ind_max = vcol + maxPixels_y
+        #creat a squared bounding box using previous boundary values
+        y = list(range(y_ind_min,y_ind_max+1))*2 #make sure to include the max in the range...
+        x = [x_ind_max]*(maxPixels_y*2+1)+[x_ind_min]*(maxPixels_y*2+1)
+        x += list(range(x_ind_min,x_ind_max+1))*2
+        y += [y_ind_max]*(maxPixels_x*2+1)+[y_ind_min]*(maxPixels_x*2+1)
+        rBox = list(zip(x,y))[1:] # this is the box
+        #just save the square of the max distance so that it doesn't need to be computed on the fly
+        sq_maxdistance = maxdistance**2
+        #let's transform the box into a circle by shrinkening it
+        cBox = []
+        for index in range(0,len(rBox)):
+              dist_pt = rBox[index]
+              #calculate distance between viewpoint and border point on the box
+              sq_dist = ((dist_pt[0]-vrow)*PixelSizeY)**2+((dist_pt[1]-vcol)*PixelSizeX)**2
+              #if the distance is too long, shrinken the ray
+              if sq_dist>sq_maxdistance:
+                  ratio=(sq_maxdistance)**0.5/(sq_dist)**0.5
+                  new_coords = (math.ceil(vrow+(dist_pt[0]-vrow)*ratio), math.ceil(vcol+(dist_pt[1]-vcol)*ratio))
+              #if distance is not too high, the coordinates stay the same
+              else:
+                  new_coords = (dist_pt[0],dist_pt[1])
+              #now let's write the circle boundary points and filter out any duplicates
+              if not new_coords in cBox:
+                  cBox.append(new_coords)
+        #finally use Bresenheim to get the paths of the rays leading to the circle bounding points
+        for bound_pt in cBox:
+            path = Bresenham_with_rasterio(d, (vrow, vcol), bound_pt)
+            #set the default values for the biggest altitude and tangent observed in the ray
+            max_alt = -99
+            max_tan = -99
+            for point in path[1:]:
+                #get the altitude of the point
+                alt = npi[point[0],point[1]]
+                #if the altitude is high enough...
+                if alt>max_alt:
+                    dist = calCosAng(path[0],path[-1],point)#get the distance in number of cells of the projected center point on the line
+                    if alt>=alt_vp: # only change the max needed altitude if the obstructing pixel is higher than the original viewpoint
+                        max_alt = alt
+                    rel_alt = alt - alt_vp #calculate the relative altitude difference with regard to viewpoint altitude
+                    if rel_alt>0: #if the viewpoint is lower
+                        tan = numpy.arctan(rel_alt/(dist))
+                    elif rel_alt<0: #if the viewpoint is higher
+                        tan = numpy.arctan(-rel_alt/(dist))*(-1)
+                    elif rel_alt==0: #if the viewpoint is at same height
+                        tan=0
+                    if tan>max_tan and npvs[point[0], point[1]] != 2: #if the current tangent is bigger than the biggest so far = visible point & make sure it is no viewpoint
+                        max_tan=tan #update the value
+                        npvs[point[0], point[1]] = 1 # mark point as visible
+                    elif npvs[point[0], point[1]] == 3: #only if point is not visible yet
+                        npvs[point[0], point[1]] = 0 #mark point as unvisible
+                elif npvs[point[0], point[1]] == 3:
+                    #if the altitude of the next point is lower or equal to the altitude of the highest previous point location above viewpoint height, no need to check
+                    npvs[point[0], point[1]] = 0
 
     #-- write this to disk
     with rasterio.open(output_file, 'w', 
@@ -172,8 +137,6 @@ def Bresenham_with_rasterio(raster, start, end):
     for el in out:
         outlist.append(tuple(el))
     #depending on the orientation of the line, sort cells in right order
-    #if a[0]<b[0] and a[1]<b[1]:
-        #outlist = sorted(outlist, key=lambda x: (x[0], x[1]))
     if a[0]>b[0] and a[1]<=b[1]:
         outlist = sorted(outlist, key=lambda x: (-x[0], x[1]))
         #print('a')
@@ -183,31 +146,14 @@ def Bresenham_with_rasterio(raster, start, end):
     elif a[0]<=b[0] and a[1]>b[1]:
         outlist = sorted(outlist, key=lambda x: (x[0], -x[1]))
     return outlist
-    #print(out[numpy.lexsort((out[:,1],out[:,1]))])
-    # re is a numpy with d.shape where the line is rasterised (values != 0)
 
 
-
-def calCosAng(strat,end,current_pt):
-    #x=np.array([3,5])
-	#y=np.array([4,2])
-	v1 = numpy.array([end[1]-strat[1],end[0]-strat[0]])
-    
-	v2 = numpy.array([current_pt[1]-strat[1],current_pt[1]-strat[1]])
-    #print(v2)
-	Lv1 = numpy.sqrt(v1.dot(v1))
-	Lv2 = numpy.sqrt(v2.dot(v2))
-	#相当于勾股定理，求得斜线的长度
-	#cos_angle=x.dot(y)/(Lx*Ly)
-	cos_angle = v1.dot(v2)/(Lv1*Lv2)
-	#求得cos_sita的值再反过来计算，绝对长度乘以cos角度为矢量长度，初中知识。。
-	#print(cos_angle)
-	angle_rad = numpy.arccos(cos_angle)
-	angle_deg = angle_rad*360/2/numpy.pi	#变为角度
-	#print(angle2)
-	#x.dot(y) =  y=∑(ai*bi
-    print("some")
-
-	return angle_deg 
-
-
+def calCosAng(start,end,current_pt):
+    #extract the two vectors
+    v1 = numpy.array([end[1]-start[1],end[0]-start[0]])
+    v2 = numpy.array([current_pt[1]-start[1],current_pt[0]-start[0]])
+    #get the length of the vector describing the line
+    Lv1 = numpy.sqrt(v1.dot(v1))
+    #and finally get the projected distance of current_pt on the line
+    dist = v1.dot(v2)/Lv1
+    return dist
