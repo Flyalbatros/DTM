@@ -17,7 +17,7 @@ import my_code_hw03
 def main():
     
     #-- read the needed parameters from the file 'params.json' (must be in same folder)
-    jparams = json.load(open('params2.json'))
+    jparams = json.load(open('params.json'))
     # jparams = json.load(open('params2.json'))
 
     start_time = time.time()

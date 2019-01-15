@@ -1,0 +1,11 @@
+ply
+format ascii 1.0
+comment GEO1015 hw04
+element vertex 2
+property double x
+property double y
+property double z
+property int segment_id
+end_header
+1.11 2.22 3.33 4
+1.23 2.34 3.23 4

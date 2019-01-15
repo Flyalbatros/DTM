@@ -1,0 +1,10 @@
+{
+    "input-file": "urban.las",
+    "output-file": "segments.ply",
+    "thinning-factor": 10,
+    "minimal-segment-count": 25,
+    "neighbourhood-type": "knn",
+    "epsilon": 0.05,
+    "k": 15,
+    "r": 1.0
+}
