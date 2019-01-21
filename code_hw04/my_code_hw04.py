@@ -6,6 +6,7 @@
 #-- [YOUR STUDENT NUMBER] 
 
 import numpy as np
+import scipy.spatial
 from scipy.linalg import eigh
 from laspy import file
 import random
@@ -37,7 +38,11 @@ def fit_plane(pts):
     n = evecs[-1]
     c = mean
 
-    return c, n
+    return n,c
+
+def valid_candidate(plane_pt, normal_v, query_pt, epsilon):
+    plane_query_v = np.array([plane_pt[0]-query_pt[0],plane_pt[1]-query_pt[1],plane_pt[2]-query_pt[2]])
+    return np.dot(plane_query_v,normal_v)<epsilon
 
 def ReadAndThinning(fn,thinning_factor):
     #returen a list of points after thinging 
@@ -50,10 +55,11 @@ def ReadAndThinning(fn,thinning_factor):
     offset = h.offset
     #print(h.scale,h.offset)
     #[0.01, 0.01, 0.01] [-0.0, -0.0, -0.0]
-
-    noGroundPts = f.points[f.classification == 2]
+    #filter out the non ground points
+    noGroundPts = f.points[f.classification != 2]
     n = len(noGroundPts)
     pts =[]
+    #thin and reproject the points
     for i in list(range(0,n,thinning_factor)):
         p = noGroundPts[i]
         pts.append([p[0][0]*scale[0]+offset[0],p[0][1]*scale[1]+offset[1],p[0][2]*scale[2]+offset[2]])
@@ -108,13 +114,95 @@ def detect_planes(jparams):
         none (but output PLY file written to 'output-file')
     """  
     pts = ReadAndThinning(jparams['input-file'],jparams['thinning-factor'])
-    print(pts[0:10])
+    tree = scipy.spatial.cKDTree(pts)
+    #print(pts[0:10])
     #print(len(pts))
 
     #region growing
     #SeedInd = random.sample(list(range(0,len(pts))),  10*jparams['minimal-segment-count'])
     SeedInd = list(range(0,len(pts),10*jparams['minimal-segment-count']))
     #print(SeedInd)
+
+    #create a dictionarry to store the visited points and the region they belong to
+    region_dict = {}
+    for reg_index in range(0,len(SeedInd)):
+        curr_pt = pts[SeedInd[reg_index]]
+        curr_region = {SeedInd[reg_index]:reg_index}
+        #query the neighbors of the seed
+        neighb = neighb_querier(jparams, curr_pt, tree)
+        #determine if seed is a good one
+        seed_neighs = []
+        for n_ind in neighb:
+            n_pt = pts[n_ind]
+            seed_neighs.append(n_pt)
+        normal_v, plane_pt = fit_plane(seed_neighs)
+        #print("first", neighb)
+        #let's identify the points of the first expansion
+        first_expansion = expand_region(neighb, plane_pt, normal_v, pts, jparams)
+        if first_expansion != -1:
+            filtered = neighb_filter(first_expansion, curr_region, [], region_dict)
+            neighb = filtered
+        expansion_ind = -99
+        #let's perform iterative region growing until no points can be added anymore
+        while expansion_ind !=-1:
+            #print("second", neighb)
+            expansion_ind = expand_region(neighb, plane_pt, normal_v, pts, jparams)
+            #only if the region can be grown...
+            if expansion_ind != -1:
+                #add the new points to the current regions
+                expansion_pts = []
+                for ind in expansion_ind:
+                    expansion_pts.append(pts[ind])
+                    if (ind in curr_region) == False:
+                        curr_region[ind] = reg_index
+                #get the new neighbors for the next step, but avoid including existing points
+                neighb = []
+                for pt in expansion_pts:
+                    neighb_inds = neighb_querier(jparams, pt, tree)
+                    filtered = neighb_filter(neighb_inds, curr_region, neighb, region_dict)
+                    neighb += filtered
+                # if neighb == []:
+                #     expansion_ind = -1
+                #print("third", neighb, curr_region)
+        if len(curr_region)>jparams["minimal-segment-count"]:
+            region_dict = {**curr_region, **region_dict}
+        print(region_dict)
+
+def neighb_filter(neighb_inds, curr_region, neighb, region_dict):
+    outlist = []
+    for neighb_ind in neighb_inds:
+        if (neighb_ind in curr_region) == False and (neighb_ind in neighb) == False and (neighb_ind in region_dict) == False:
+            outlist.append(neighb_ind)
+    return outlist
+
+def expand_region(neighb, plane_pt, normal_v, pts, jparams):
+    expansion = []
+    #print(neighb)
+    for query_pt_ind in neighb:
+        #print("iterating")
+        if valid_candidate(plane_pt, normal_v, pts[query_pt_ind], jparams['epsilon'])==True:
+            expansion.append(query_pt_ind)
+            #print("added point")
+        #else:
+            #print("point too far", query_pt_ind)
+    if len(expansion) == 0:
+        #print("no expansion possible, trying next seed/neighbor point")
+        return -1
+    else:
+        return expansion
+
+def neighb_querier(jparams, curr_pt, tree):
+    #print("current", curr_pt)
+    if type(curr_pt[0]) == type([]):
+        print("error: more than one point provided for neighbour query")
+        return "error"
+    if jparams['neighbourhood-type'] == 'knn':
+        dist, neighb = tree.query(curr_pt,jparams['k'])
+    if jparams['neighbourhood-type'] == 'radius':
+        neighb = tree.query_ball_point(curr_pt,jparams['r'])
+    return neighb
+
+
 
 
 
@@ -127,5 +215,5 @@ def detect_planes(jparams):
     planes = np.array([[1.11,2.22,3.33,4],[1.23,2.34,3.23,4]])
     print(planes)
     write2PLY(jparams['output-file'],planes)
-    
+
 
