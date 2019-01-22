@@ -126,7 +126,7 @@ def detect_planes(jparams):
     #print(n,int(n/50))
     pts = pts[:30000]
     #kd = scipy.spatial.KDTree([i[0:3] for i in pts])
-    kd = scipy.spatial.KDTree(pts)
+    kd = scipy.spatial.cKDTree(pts)
 
     #region growing
     #SeedInd = random.sample(list(range(0,len(pts))),  10*jparams['minimal-segment-count'])
@@ -171,7 +171,6 @@ def detect_planes(jparams):
                         #print(p,type(p))
                         #print(remaining_pts[p-3:p+3])
                         remaining_pts.remove(p)
-
                     else:
                         print("start growing region")
                         testpt = pts[p]

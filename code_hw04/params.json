@@ -1,10 +1,10 @@
 {
-    "input-file": "urban.las",
+    "input-file": "urban_subset.las",
     "output-file": "segments.ply",
-    "thinning-factor": 10,
-    "minimal-segment-count": 25,
-    "neighbourhood-type": "knn",
-    "epsilon": 0.05,
+    "thinning-factor": 2,
+    "minimal-segment-count": 15,
+    "neighbourhood-type": "radius",
+    "epsilon": 0.1,
     "k": 15,
-    "r": 1.0
+    "r": 2.0
 }
