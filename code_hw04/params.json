@@ -3,7 +3,7 @@
     "output-file": "segments.ply",
     "thinning-factor": 2,
     "minimal-segment-count": 15,
-    "neighbourhood-type": "radius",
+    "neighbourhood-type": "knn",
     "epsilon": 0.1,
     "k": 15,
     "r": 2.0
